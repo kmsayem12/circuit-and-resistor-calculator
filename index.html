@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electronics Circuit & Resistor Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Three.js + OrbitControls for 3D Resistor Visualizer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    /* Range slider custom styling */
+    input[type="range"] {
+      accent-color: #6366f1;
+    }
+    .color-pill {
+      height: 22px;
+      padding: 0 10px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      text-shadow: 0px 1px 2px rgba(0, 0, 0, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen py-8 px-4 font-sans">
+  <div class="max-w-5xl mx-auto space-y-6">
+
+    <!-- Header -->
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+        ⚡ Circuit & Resistor Calculator
+      </h1>
+      <p class="text-slate-400 text-sm">
+        Series drop, parallel equivalency, and real-time 3D color-coded resistor visualizers.
+      </p>
+    </header>
+
+    <!-- Tab Buttons -->
+    <div class="flex bg-slate-800 p-1.5 rounded-xl border border-slate-700 max-w-md mx-auto">
+      <button id="tabSeriesBtn" onclick="switchTab('series')"
+        class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all bg-indigo-600 text-white shadow-md">
+        Series Calculator
+      </button>
+      <button id="tabParallelBtn" onclick="switchTab('parallel')"
+        class="flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all text-slate-400 hover:text-white">
+        Parallel Calculator
+      </button>
+    </div>
+
+    <!-- ========================================== -->
+    <!--          SERIES CALCULATOR TAB             -->
+    <!-- ========================================== -->
+    <main id="seriesTab" class="space-y-6">
+      
+      <!-- KPI Metric Row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-indigo-400">Required Resistor</span>
+          <div id="kpi-resitance" class="text-2xl font-black text-white mt-1">20.0 Ω</div>
+          <div id="kpi-e24" class="text-xs text-indigo-300 mt-0.5">Std E24: 20 Ω</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Voltage Drop</span>
+          <div id="kpi-vdrop" class="text-2xl font-black text-emerald-400 mt-1">2.00 V</div>
+          <div id="kpi-vdrop-pct" class="text-xs text-slate-400 mt-0.5">40.0% of Vin</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Power Dissipated</span>
+          <div id="kpi-power" class="text-2xl font-black text-amber-400 mt-1">200 mW</div>
+          <div id="kpi-power-w" class="text-xs text-slate-400 mt-0.5">0.200 W</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Min Rating</span>
+          <div id="kpi-rating" class="text-2xl font-black text-cyan-400 mt-1">1/2 W</div>
+          <div id="kpi-status-container" class="mt-1">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-950 border border-emerald-700 text-emerald-400">
+              Safe (40% load)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls & 3D Visualizer Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Controls Deck -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-5">
+          <div>
+            <h2 class="text-base font-bold text-slate-200">Circuit Parameters</h2>
+            <p class="text-xs text-slate-400">Adjust parameters or pick from common presets.</p>
+          </div>
+
+          <!-- Presets -->
+          <div>
+            <span class="block text-xs font-medium text-slate-400 mb-2">Quick Presets</span>
+            <div class="flex flex-wrap gap-2" id="preset-group">
+              <button class="preset-chip text-xs px-3 py-1.5 rounded-lg border bg-indigo-600/30 border-indigo-500 text-indigo-200 font-medium"
+                data-vin="5" data-vtarget="3" data-ima="100">
+                3.3V Module @ 5V (100mA)
+              </button>
+              <button class="preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-vin="5" data-vtarget="2" data-ima="20">
+                Red LED @ 5V (20mA)
+              </button>
+              <button class="preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-vin="12" data-vtarget="3.2" data-ima="20">
+                Blue LED @ 12V (20mA)
+              </button>
+              <button class="preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-vin="12" data-vtarget="5" data-ima="500">
+                5V Relay @ 12V (500mA)
+              </button>
+            </div>
+          </div>
+
+          <!-- Input Voltage -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs">
+              <label for="num-vin" class="text-slate-300 font-medium">Source Voltage (Vin)</label>
+              <div class="flex items-center gap-1">
+                <input type="number" id="num-vin" value="5" min="0.5" max="48" step="0.1"
+                  class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-white font-mono text-xs focus:border-indigo-500 outline-none">
+                <span class="text-slate-400">V</span>
+              </div>
+            </div>
+            <input type="range" id="slider-vin" min="0.5" max="48" step="0.1" value="5"
+              class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Target Voltage -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs">
+              <label for="num-vtarget" class="text-slate-300 font-medium">Target / Load Voltage (Vtarget)</label>
+              <div class="flex items-center gap-1">
+                <input type="number" id="num-vtarget" value="3" min="0.1" max="48" step="0.1"
+                  class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-white font-mono text-xs focus:border-indigo-500 outline-none">
+                <span class="text-slate-400">V</span>
+              </div>
+            </div>
+            <input type="range" id="slider-vtarget" min="0.1" max="48" step="0.1" value="3"
+              class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Load Current -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs">
+              <label for="num-ima" class="text-slate-300 font-medium">Operating Current (Iload)</label>
+              <div class="flex items-center gap-1">
+                <input type="number" id="num-ima" value="100" min="1" max="3000" step="1"
+                  class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-white font-mono text-xs focus:border-indigo-500 outline-none">
+                <span class="text-slate-400">mA</span>
+              </div>
+            </div>
+            <input type="range" id="slider-ima" min="1" max="3000" step="1" value="100"
+              class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Warning Box -->
+          <div id="seriesWarn" class="hidden text-amber-400 bg-amber-950/40 border border-amber-800 p-3 rounded-lg text-xs leading-relaxed">
+            ⚠ Warning: Target voltage exceeds or equals supply voltage. A series resistor cannot step up voltage.
+          </div>
+        </div>
+
+        <!-- 3D Resistor Visualizer Card (Series) -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between space-y-4">
+          <div class="flex justify-between items-center">
+            <h2 class="text-base font-bold text-slate-200">3D Resistor Visualizer</h2>
+            <span id="e24-label" class="text-xs text-indigo-400 font-mono">E24 Standard: 20 Ω ±5%</span>
+          </div>
+
+          <!-- Three.js Canvas Container -->
+          <div id="viewport-3d" class="w-full h-56 bg-slate-950/70 border border-slate-700/60 rounded-xl overflow-hidden relative cursor-grab active:cursor-grabbing">
+            <!-- 3D Canvas dynamically rendered here -->
+          </div>
+
+          <!-- Color Band Pills Strip -->
+          <div id="color-band-strip" class="flex flex-wrap items-center justify-center gap-2 p-3 bg-slate-900/60 border border-slate-700/50 rounded-xl">
+            <!-- Populated via JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Formula Breakdown Callout -->
+      <div id="calc-breakdown" class="bg-slate-800/80 border border-slate-700/70 p-4 rounded-xl text-xs text-slate-300 leading-relaxed space-y-1">
+        <!-- Live summary populated via JS -->
+      </div>
+    </main>
+
+    <!-- ========================================== -->
+    <!--         PARALLEL CALCULATOR TAB            -->
+    <!-- ========================================== -->
+    <main id="parallelTab" class="space-y-6 hidden">
+
+      <!-- KPI Metric Row for Parallel -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-indigo-950/40 border border-indigo-500/30 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-indigo-400">Equivalent (Req)</span>
+          <div id="pReq" class="text-2xl font-black text-white mt-1">--</div>
+          <div id="p-e24" class="text-xs text-indigo-300 mt-0.5">Std E24: --</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Total Current (Itotal)</span>
+          <div id="pItotal" class="text-2xl font-black text-emerald-400 mt-1">--</div>
+          <div id="p-conductance" class="text-xs text-slate-400 mt-0.5">G: -- mS</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Total Circuit Power</span>
+          <div id="pPtotal" class="text-2xl font-black text-amber-400 mt-1">--</div>
+          <div class="text-xs text-slate-400 mt-0.5">P = V × Itotal</div>
+        </div>
+
+        <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+          <span class="text-xs uppercase tracking-wider font-semibold text-slate-400">Active Branches</span>
+          <div id="p-branch-count" class="text-2xl font-black text-cyan-400 mt-1">3</div>
+          <div class="text-xs text-slate-400 mt-0.5">Parallel bus circuit</div>
+        </div>
+      </div>
+
+      <!-- Controls & 3D Visualizer Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Branch Controls Deck (Styled Identical to Circuit Parameters Card) -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl space-y-5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-base font-bold text-slate-200">Parallel Parameters</h2>
+              <p class="text-xs text-slate-400">Adjust bus voltage and individual branch resistances.</p>
+            </div>
+            <button onclick="addBranch()"
+              class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition-all">
+              + Add Branch
+            </button>
+          </div>
+
+          <!-- Parallel Quick Presets -->
+          <div>
+            <span class="block text-xs font-medium text-slate-400 mb-2">Quick Presets</span>
+            <div class="flex flex-wrap gap-2" id="parallel-preset-group">
+              <button class="parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-indigo-600/30 border-indigo-500 text-indigo-200 font-medium"
+                data-volt="12" data-branches="100,220,470">
+                12V: 100Ω | 220Ω | 470Ω
+              </button>
+              <button class="parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-volt="5" data-branches="100,100">
+                5V: Dual 100Ω (Req: 50Ω)
+              </button>
+              <button class="parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-volt="12" data-branches="220,220,220,220">
+                12V: Quad 220Ω (Req: 55Ω)
+              </button>
+              <button class="parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500"
+                data-volt="24" data-branches="1000,2200,4700">
+                24V: 1kΩ | 2.2kΩ | 4.7kΩ
+              </button>
+            </div>
+          </div>
+
+          <!-- Circuit Bus Voltage Control Row (Matching UI) -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between items-center text-xs">
+              <label for="num-pvolt" class="text-slate-300 font-medium">Circuit Bus Voltage (Vbus)</label>
+              <div class="flex items-center gap-1">
+                <input type="number" id="num-pvolt" value="12" min="0.5" max="48" step="0.1"
+                  class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-white font-mono text-xs focus:border-indigo-500 outline-none">
+                <span class="text-slate-400">V</span>
+              </div>
+            </div>
+            <input type="range" id="slider-pvolt" min="0.5" max="48" step="0.1" value="12"
+              class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+          </div>
+
+          <!-- Divider -->
+          <div class="border-t border-slate-700/60 pt-2">
+            <span class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3">Branch Resistances</span>
+            <div id="branchesContainer" class="space-y-4 max-h-72 overflow-y-auto pr-1">
+              <!-- Dynamic branch rows with both range + number inputs injected here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 3D Resistor Visualizer Card (Parallel Equivalent) -->
+        <div class="bg-slate-800 border border-slate-700 p-6 rounded-2xl flex flex-col justify-between space-y-4">
+          <div class="flex justify-between items-center">
+            <div>
+              <h2 class="text-base font-bold text-slate-200">Req 3D Resistor Visualizer</h2>
+              <p class="text-xs text-slate-400">Equivalent single resistor replacement</p>
+            </div>
+            <span id="p-e24-label" class="text-xs text-indigo-400 font-mono">E24: -- ±5%</span>
+          </div>
+
+          <!-- Three.js Canvas Container (Parallel) -->
+          <div id="viewport-3d-parallel" class="w-full h-56 bg-slate-950/70 border border-slate-700/60 rounded-xl overflow-hidden relative cursor-grab active:cursor-grabbing">
+            <!-- 3D Canvas dynamically rendered here -->
+          </div>
+
+          <!-- Color Band Pills Strip (Parallel) -->
+          <div id="color-band-strip-parallel" class="flex flex-wrap items-center justify-center gap-2 p-3 bg-slate-900/60 border border-slate-700/50 rounded-xl">
+            <!-- Populated via JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Parallel Circuit Breakdown Callout -->
+      <div id="parallel-calc-breakdown" class="bg-slate-800/80 border border-slate-700/70 p-4 rounded-xl text-xs text-slate-300 leading-relaxed space-y-1">
+        <!-- Live summary populated via JS -->
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Tab switching
+    function switchTab(tab) {
+      const isSeries = tab === 'series';
+      document.getElementById('seriesTab').classList.toggle('hidden', !isSeries);
+      document.getElementById('parallelTab').classList.toggle('hidden', isSeries);
+
+      document.getElementById('tabSeriesBtn').className = isSeries
+        ? "flex-1 py-2.5 text-sm font-semibold rounded-lg bg-indigo-600 text-white shadow-md"
+        : "flex-1 py-2.5 text-sm font-semibold rounded-lg text-slate-400 hover:text-white";
+
+      document.getElementById('tabParallelBtn').className = !isSeries
+        ? "flex-1 py-2.5 text-sm font-semibold rounded-lg bg-indigo-600 text-white shadow-md"
+        : "flex-1 py-2.5 text-sm font-semibold rounded-lg text-slate-400 hover:text-white";
+
+      setTimeout(() => {
+        if (isSeries && seriesVis) {
+          seriesVis.resize();
+        } else if (!isSeries && parallelVis) {
+          parallelVis.resize();
+        }
+      }, 50);
+    }
+
+    // ==========================================
+    //       SHARED COLOR CODE & E24 DATA
+    // ==========================================
+    const E24_MANTISSAS = [
+      10, 11, 12, 13, 15, 16, 18, 20, 22, 24, 27, 30, 33, 36, 39, 43, 47, 51,
+      56, 62, 68, 75, 82, 91,
+    ];
+
+    const COLOR_MAP = {
+      0: { name: "Black", color: "#1a1a1a", textDark: false },
+      1: { name: "Brown", color: "#795548", textDark: false },
+      2: { name: "Red", color: "#e53935", textDark: false },
+      3: { name: "Orange", color: "#ff9800", textDark: true },
+      4: { name: "Yellow", color: "#fdd835", textDark: true },
+      5: { name: "Green", color: "#4caf50", textDark: false },
+      6: { name: "Blue", color: "#1e88e5", textDark: false },
+      7: { name: "Violet", color: "#8e24aa", textDark: false },
+      8: { name: "Grey", color: "#8e8e8e", textDark: false },
+      9: { name: "White", color: "#f5f5f5", textDark: true },
+      "-1": { name: "Gold (x0.1)", color: "#d4af37", textDark: true },
+      "-2": { name: "Silver (x0.01)", color: "#c0c0c0", textDark: true },
+    };
+
+    const WATTAGE_RATINGS = [
+      { name: "1/8 W", watts: 0.125 },
+      { name: "1/4 W", watts: 0.25 },
+      { name: "1/2 W", watts: 0.5 },
+      { name: "1 W", watts: 1.0 },
+      { name: "2 W", watts: 2.0 },
+      { name: "5 W", watts: 5.0 },
+      { name: "10 W", watts: 10.0 },
+      { name: "25 W", watts: 25.0 },
+    ];
+
+    function getNearestE24(ohms) {
+      if (ohms <= 0 || !isFinite(ohms)) return { value: 0, mantissa: 0, exp: 0 };
+      const exp = Math.floor(Math.log10(ohms)) - 1;
+      const mantissa = ohms / Math.pow(10, exp);
+      let closest = E24_MANTISSAS[0];
+      let minDiff = Math.abs(mantissa - closest);
+
+      for (let i = 1; i < E24_MANTISSAS.length; i++) {
+        const diff = Math.abs(mantissa - E24_MANTISSAS[i]);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closest = E24_MANTISSAS[i];
+        }
+      }
+
+      const e24Value = closest * Math.pow(10, exp);
+      return {
+        value: Math.round(e24Value * 100) / 100,
+        mantissa: closest,
+        exp: exp,
+      };
+    }
+
+    function getColorBands(e24) {
+      if (!e24 || e24.value <= 0)
+        return [COLOR_MAP[0], COLOR_MAP[0], COLOR_MAP[0], COLOR_MAP["-1"]];
+      const mantStr = e24.mantissa.toString();
+      const digit1 = parseInt(mantStr[0], 10);
+      const digit2 = parseInt(mantStr[1], 10);
+      const multExp = e24.exp;
+
+      const band1 = COLOR_MAP[digit1] || COLOR_MAP[0];
+      const band2 = COLOR_MAP[digit2] || COLOR_MAP[0];
+      const band3 = COLOR_MAP[multExp] || COLOR_MAP[0];
+      const band4 = { name: "Gold (±5%)", color: "#d4af37", textDark: true };
+
+      return [band1, band2, band3, band4];
+    }
+
+    function formatResistance(ohms) {
+      if (ohms < 0 || !isFinite(ohms)) return "—";
+      if (ohms >= 1e6) return (ohms / 1e6).toFixed(2) + " MΩ";
+      if (ohms >= 1e3) return (ohms / 1e3).toFixed(2) + " kΩ";
+      return ohms.toFixed(1) + " Ω";
+    }
+
+    // ==========================================
+    //   REUSABLE 3D RESISTOR VISUALIZER CLASS
+    // ==========================================
+    class ResistorVisualizer3D {
+      constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.bandMeshes = [];
+        this.init();
+      }
+
+      init() {
+        if (!this.container || typeof THREE === "undefined") return;
+
+        const w = this.container.clientWidth || 300;
+        const h = this.container.clientHeight || 220;
+
+        this.scene = new THREE.Scene();
+        this.camera = new THREE.PerspectiveCamera(35, w / h, 0.1, 100);
+        this.camera.position.set(0, 1.8, 6.5);
+        this.camera.lookAt(0, 0, 0);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setSize(w, h);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.container.appendChild(this.renderer.domElement);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        this.scene.add(ambientLight);
+
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight1.position.set(5, 8, 5);
+        this.scene.add(dirLight1);
+
+        const dirLight2 = new THREE.DirectionalLight(0x818cf8, 0.4);
+        dirLight2.position.set(-5, -3, -5);
+        this.scene.add(dirLight2);
+
+        // Resistor Assembly
+        this.resistorGroup = new THREE.Group();
+
+        // Lead Wires
+        const leadMat = new THREE.MeshStandardMaterial({
+          color: 0xcccccc,
+          metalness: 0.8,
+          roughness: 0.2,
+        });
+        const leadGeo = new THREE.CylinderGeometry(0.08, 0.08, 6.0, 16);
+        leadGeo.rotateZ(Math.PI / 2);
+        const leadMesh = new THREE.Mesh(leadGeo, leadMat);
+        this.resistorGroup.add(leadMesh);
+
+        // Ceramic tan body
+        const bodyMat = new THREE.MeshStandardMaterial({
+          color: 0xd2b48c,
+          roughness: 0.6,
+          metalness: 0.1,
+        });
+
+        const bodyGeo = new THREE.CylinderGeometry(0.55, 0.55, 2.6, 32);
+        bodyGeo.rotateZ(Math.PI / 2);
+        const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+        this.resistorGroup.add(bodyMesh);
+
+        // Bulbous end caps
+        const capGeo = new THREE.CylinderGeometry(0.62, 0.62, 0.25, 32);
+        capGeo.rotateZ(Math.PI / 2);
+        const cap1 = new THREE.Mesh(capGeo, bodyMat);
+        cap1.position.x = -1.25;
+        this.resistorGroup.add(cap1);
+
+        const cap2 = new THREE.Mesh(capGeo, bodyMat);
+        cap2.position.x = 1.25;
+        this.resistorGroup.add(cap2);
+
+        // 4 Color Bands
+        const bandPositions = [-0.85, -0.45, -0.05, 0.75];
+        this.bandMeshes = [];
+
+        bandPositions.forEach((xPos) => {
+          const bandGeo = new THREE.CylinderGeometry(0.57, 0.57, 0.14, 32);
+          bandGeo.rotateZ(Math.PI / 2);
+          const bandMat = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.4,
+          });
+          const bandMesh = new THREE.Mesh(bandGeo, bandMat);
+          bandMesh.position.x = xPos;
+          this.resistorGroup.add(bandMesh);
+          this.bandMeshes.push(bandMat);
+        });
+
+        this.scene.add(this.resistorGroup);
+
+        // OrbitControls
+        if (typeof THREE.OrbitControls !== "undefined") {
+          this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+          this.controls.enableDamping = true;
+          this.controls.dampingFactor = 0.05;
+          this.controls.enableZoom = false;
+          this.controls.maxPolarAngle = Math.PI / 2 + 0.2;
+          this.controls.minPolarAngle = Math.PI / 4;
+        }
+
+        const animate = () => {
+          requestAnimationFrame(animate);
+          if (this.resistorGroup) {
+            this.resistorGroup.rotation.y += 0.006;
+          }
+          this.renderer.render(this.scene, this.camera);
+        };
+        animate();
+
+        window.addEventListener("resize", () => this.resize());
+      }
+
+      resize() {
+        if (!this.container || !this.renderer || !this.camera) return;
+        const nw = this.container.clientWidth || 300;
+        const nh = this.container.clientHeight || 220;
+        this.camera.aspect = nw / nh;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(nw, nh);
+      }
+
+      updateBands(bands) {
+        if (!this.bandMeshes || this.bandMeshes.length < 4) return;
+        bands.forEach((b, idx) => {
+          if (this.bandMeshes[idx]) {
+            this.bandMeshes[idx].color.setStyle(b.color);
+          }
+        });
+      }
+    }
+
+    let seriesVis, parallelVis;
+
+    // ==========================================
+    //      SERIES STATE & CALCULATIONS
+    // ==========================================
+    const seriesState = {
+      vInput: 5.0,
+      vTarget: 3.0,
+      currentmA: 100.0,
+    };
+
+    function updateSeriesViz() {
+      let vIn = parseFloat(seriesState.vInput);
+      let vTarget = parseFloat(seriesState.vTarget);
+      let currentmA = parseFloat(seriesState.currentmA);
+
+      if (isNaN(vIn) || vIn <= 0) vIn = 0.1;
+      if (isNaN(vTarget) || vTarget <= 0) vTarget = 0.1;
+      if (isNaN(currentmA) || currentmA <= 0) currentmA = 1;
+
+      const warn = document.getElementById("seriesWarn");
+      const isInvalid = vIn <= vTarget;
+      warn.classList.toggle("hidden", !isInvalid);
+
+      const vDrop = Math.max(0, vIn - vTarget);
+      const currentA = currentmA / 1000.0;
+      const resistance = (currentA > 0 && !isInvalid) ? vDrop / currentA : 0;
+      const powerW = vDrop * currentA;
+      const powermW = powerW * 1000.0;
+
+      const e24 = getNearestE24(resistance);
+      const bands = getColorBands(e24);
+
+      const recommendedW = powerW * 1.5;
+      let selectedRating = WATTAGE_RATINGS[WATTAGE_RATINGS.length - 1];
+      for (let r of WATTAGE_RATINGS) {
+        if (r.watts >= recommendedW) {
+          selectedRating = r;
+          break;
+        }
+      }
+
+      const capacityPct = selectedRating
+        ? Math.round((powerW / selectedRating.watts) * 100)
+        : 0;
+
+      // Update KPIs
+      document.getElementById("kpi-resitance").textContent = isInvalid ? "—" : formatResistance(resistance);
+      document.getElementById("kpi-e24").textContent = isInvalid ? "—" : `Std E24: ${formatResistance(e24.value)}`;
+      document.getElementById("kpi-vdrop").textContent = isInvalid ? "—" : `${vDrop.toFixed(2)} V`;
+      const vDropPct = vIn > 0 ? ((vDrop / vIn) * 100).toFixed(1) : "0";
+      document.getElementById("kpi-vdrop-pct").textContent = isInvalid ? "—" : `${vDropPct}% of Vin`;
+
+      document.getElementById("kpi-power").textContent = isInvalid ? "—" : (powermW >= 1000 ? `${powerW.toFixed(2)} W` : `${Math.round(powermW)} mW`);
+      document.getElementById("kpi-power-w").textContent = isInvalid ? "—" : `${powerW.toFixed(3)} W`;
+      document.getElementById("kpi-rating").textContent = isInvalid ? "—" : selectedRating.name;
+
+      // Status Badge
+      const statusContainer = document.getElementById("kpi-status-container");
+      let statusBg = "bg-emerald-950 border-emerald-700 text-emerald-400";
+      let statusText = `Safe (${capacityPct}% load)`;
+
+      if (isInvalid) {
+        statusBg = "bg-rose-950 border-rose-700 text-rose-400";
+        statusText = "Vin ≤ Vtarget";
+      } else if (capacityPct > 80 && capacityPct <= 100) {
+        statusBg = "bg-amber-950 border-amber-700 text-amber-400";
+        statusText = `Hot (${capacityPct}% load)`;
+      } else if (capacityPct > 100) {
+        statusBg = "bg-rose-950 border-rose-700 text-rose-400";
+        statusText = `Overload (${capacityPct}%)`;
+      }
+      statusContainer.innerHTML = `<span class="px-2 py-0.5 rounded-full text-xs font-semibold border ${statusBg}">${statusText}</span>`;
+
+      // Update Color Band Pills
+      const bandStrip = document.getElementById("color-band-strip");
+      if (bandStrip) {
+        bandStrip.innerHTML = bands.map(b => {
+          const textColor = b.textDark ? "#111827" : "#ffffff";
+          return `<span class="color-pill" style="background: ${b.color}; color: ${textColor};">${b.name}</span>`;
+        }).join("");
+      }
+
+      document.getElementById("e24-label").textContent = `E24 Standard: ${formatResistance(e24.value)} ±5%`;
+
+      // Breakdown text
+      const breakdown = document.getElementById("calc-breakdown");
+      if (breakdown) {
+        if (isInvalid) {
+          breakdown.innerHTML = `<strong class="text-rose-400">Error:</strong> Target voltage (${vTarget.toFixed(2)}V) cannot be greater than or equal to source voltage (${vIn.toFixed(2)}V). A passive series resistor can only drop voltage, not boost it.`;
+        } else {
+          breakdown.innerHTML = `
+            <div><strong>Formula Breakdown:</strong></div>
+            <div>• Voltage Drop: <em>Vdrop = Vin - Vtarget</em> = ${vIn.toFixed(2)}V - ${vTarget.toFixed(2)}V = <b class="text-emerald-400">${vDrop.toFixed(2)} V</b></div>
+            <div>• Required Resistance: <em>R = Vdrop / I</em> = ${vDrop.toFixed(2)}V / ${currentA.toFixed(3)}A = <b class="text-indigo-400">${resistance.toFixed(2)} Ω</b> (Nearest Standard: <b>${formatResistance(e24.value)}</b>)</div>
+            <div>• Power Dissipation: <em>P = Vdrop × I</em> = ${vDrop.toFixed(2)}V × ${currentA.toFixed(3)}A = <b class="text-amber-400">${powerW.toFixed(3)} W (${Math.round(powermW)} mW)</b></div>
+            <div>• Recommended Power Rating: <b class="text-cyan-400">${selectedRating.name} (${selectedRating.watts}W)</b> (operating at ${capacityPct}% capacity for thermal reliability).</div>
+          `;
+        }
+      }
+
+      if (seriesVis) seriesVis.updateBands(bands);
+    }
+
+    function initSeriesListeners() {
+      const controls = [
+        { sliderId: "slider-vin", numId: "num-vin", key: "vInput", min: 0.5, max: 48 },
+        { sliderId: "slider-vtarget", numId: "num-vtarget", key: "vTarget", min: 0.1, max: 48 },
+        { sliderId: "slider-ima", numId: "num-ima", key: "currentmA", min: 1, max: 3000 },
+      ];
+
+      controls.forEach(({ sliderId, numId, key, min, max }) => {
+        const slider = document.getElementById(sliderId);
+        const numInput = document.getElementById(numId);
+
+        slider.addEventListener("input", (e) => {
+          const val = parseFloat(e.target.value);
+          seriesState[key] = val;
+          numInput.value = val;
+          updateSeriesViz();
+        });
+
+        numInput.addEventListener("input", (e) => {
+          let val = parseFloat(e.target.value);
+          if (isNaN(val)) return;
+          val = Math.max(min, Math.min(max, val));
+          seriesState[key] = val;
+          slider.value = val;
+          updateSeriesViz();
+        });
+      });
+
+      const presetGroup = document.getElementById("preset-group");
+      if (presetGroup) {
+        presetGroup.addEventListener("click", (e) => {
+          const chip = e.target.closest(".preset-chip");
+          if (!chip) return;
+
+          document.querySelectorAll(".preset-chip").forEach(c => {
+            c.className = "preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500";
+          });
+          chip.className = "preset-chip text-xs px-3 py-1.5 rounded-lg border bg-indigo-600/30 border-indigo-500 text-indigo-200 font-medium";
+
+          seriesState.vInput = parseFloat(chip.dataset.vin);
+          seriesState.vTarget = parseFloat(chip.dataset.vtarget);
+          seriesState.currentmA = parseFloat(chip.dataset.ima);
+
+          controls.forEach(({ sliderId, numId, key }) => {
+            document.getElementById(sliderId).value = seriesState[key];
+            document.getElementById(numId).value = seriesState[key];
+          });
+
+          updateSeriesViz();
+        });
+      }
+    }
+
+    // ==========================================
+    //      PARALLEL CALCULATOR LOGIC
+    // ==========================================
+    let parallelBusVoltage = 12.0;
+    let branchList = [100, 220, 470];
+
+    function renderBranches() {
+      const container = document.getElementById('branchesContainer');
+      container.innerHTML = branchList.map((val, idx) => `
+        <div class="space-y-1.5 bg-slate-900/50 p-2.5 rounded-xl border border-slate-700/60">
+          <div class="flex justify-between items-center text-xs">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-indigo-400">R${idx + 1}</span>
+              <span class="text-slate-400 font-medium">Branch Resistor</span>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <input type="number" id="num-pbranch-${idx}" value="${val}" min="1" max="10000" step="1"
+                oninput="syncBranchInput(${idx}, this.value, 'num')"
+                class="w-20 bg-slate-900 border border-slate-700 rounded px-2 py-1 text-right text-white font-mono text-xs focus:border-indigo-500 outline-none">
+              <span class="text-slate-400 text-xs">Ω</span>
+              ${branchList.length > 2 ? `
+                <button onclick="removeBranch(${idx})" title="Remove branch"
+                  class="ml-1 p-1 text-slate-500 hover:text-rose-400 rounded transition-colors text-xs">
+                  ✕
+                </button>
+              ` : '<div class="w-4"></div>'}
+            </div>
+          </div>
+          <input type="range" id="slider-pbranch-${idx}" min="1" max="5000" step="1" value="${val}"
+            oninput="syncBranchInput(${idx}, this.value, 'slider')"
+            class="w-full h-1.5 bg-slate-700 rounded-lg cursor-pointer">
+        </div>
+      `).join('');
+      document.getElementById('p-branch-count').innerText = branchList.length;
+      calcParallel();
+    }
+
+    function syncBranchInput(index, value, origin) {
+      let parsed = parseFloat(value);
+      if (isNaN(parsed) || parsed <= 0) parsed = 1;
+
+      branchList[index] = parsed;
+
+      if (origin === 'num') {
+        const slider = document.getElementById(`slider-pbranch-${index}`);
+        if (slider) slider.value = Math.min(5000, parsed);
+      } else {
+        const num = document.getElementById(`num-pbranch-${index}`);
+        if (num) num.value = parsed;
+      }
+
+      calcParallel();
+    }
+
+    function addBranch() {
+      branchList.push(100);
+      renderBranches();
+    }
+
+    function removeBranch(index) {
+      if (branchList.length > 2) {
+        branchList.splice(index, 1);
+        renderBranches();
+      }
+    }
+
+    function initParallelListeners() {
+      const vSlider = document.getElementById("slider-pvolt");
+      const vNum = document.getElementById("num-pvolt");
+
+      vSlider.addEventListener("input", (e) => {
+        parallelBusVoltage = parseFloat(e.target.value);
+        vNum.value = parallelBusVoltage;
+        calcParallel();
+      });
+
+      vNum.addEventListener("input", (e) => {
+        let val = parseFloat(e.target.value);
+        if (isNaN(val)) return;
+        val = Math.max(0.5, Math.min(48, val));
+        parallelBusVoltage = val;
+        vSlider.value = val;
+        calcParallel();
+      });
+
+      // Parallel Presets
+      const presetGroup = document.getElementById("parallel-preset-group");
+      if (presetGroup) {
+        presetGroup.addEventListener("click", (e) => {
+          const chip = e.target.closest(".parallel-preset-chip");
+          if (!chip) return;
+
+          document.querySelectorAll(".parallel-preset-chip").forEach(c => {
+            c.className = "parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-slate-900 border-slate-700 text-slate-300 hover:border-slate-500";
+          });
+          chip.className = "parallel-preset-chip text-xs px-3 py-1.5 rounded-lg border bg-indigo-600/30 border-indigo-500 text-indigo-200 font-medium";
+
+          parallelBusVoltage = parseFloat(chip.dataset.volt);
+          vSlider.value = parallelBusVoltage;
+          vNum.value = parallelBusVoltage;
+
+          branchList = chip.dataset.branches.split(',').map(Number);
+          renderBranches();
+        });
+      }
+    }
+
+    function calcParallel() {
+      const v = parallelBusVoltage;
+      const valid = branchList.filter(r => r > 0);
+
+      if (valid.length === 0) return;
+
+      const invSum = valid.reduce((sum, r) => sum + (1 / r), 0);
+      const req = invSum > 0 ? (1 / invSum) : 0;
+      const iTotal = (v > 0 && req > 0) ? (v / req) : 0;
+      const pTotal = v * iTotal;
+      const conductanceMS = invSum * 1000;
+
+      // Closest E24 for Req
+      const e24 = getNearestE24(req);
+      const bands = getColorBands(e24);
+
+      // KPI outputs
+      document.getElementById('pReq').innerText = req >= 1000 ? `${(req / 1000).toFixed(2)} kΩ` : `${req.toFixed(2)} Ω`;
+      document.getElementById('p-e24').innerText = `Std E24: ${formatResistance(e24.value)}`;
+      document.getElementById('pItotal').innerText = iTotal >= 1 ? `${iTotal.toFixed(2)} A` : `${(iTotal * 1000).toFixed(1)} mA`;
+      document.getElementById('p-conductance').innerText = `G: ${conductanceMS.toFixed(2)} mS`;
+      document.getElementById('pPtotal').innerText = pTotal >= 1 ? `${pTotal.toFixed(2)} W` : `${(pTotal * 1000).toFixed(1)} mW`;
+
+      // Update 3D Visualizer & Pills for Parallel
+      document.getElementById('p-e24-label').innerText = `E24 Standard: ${formatResistance(e24.value)} ±5%`;
+
+      const bandStrip = document.getElementById('color-band-strip-parallel');
+      if (bandStrip) {
+        bandStrip.innerHTML = bands.map(b => {
+          const textColor = b.textDark ? "#111827" : "#ffffff";
+          return `<span class="color-pill" style="background: ${b.color}; color: ${textColor};">${b.name}</span>`;
+        }).join("");
+      }
+
+      if (parallelVis) parallelVis.updateBands(bands);
+
+      // Detailed Parallel Breakdown
+      const breakdown = document.getElementById('parallel-calc-breakdown');
+      if (breakdown) {
+        const branchStrings = valid.map((r, i) => `1/${r}Ω`).join(' + ');
+        breakdown.innerHTML = `
+          <div><strong>Equivalent Circuit Summary:</strong></div>
+          <div>• Reciprocal Sum (1/Req): <em>${branchStrings}</em> = <b>${invSum.toFixed(5)} S</b></div>
+          <div>• Equivalent Resistance (Req): <em>1 / (${invSum.toFixed(5)})</em> = <b class="text-indigo-400">${req.toFixed(2)} Ω</b> (Nearest Standard: <b>${formatResistance(e24.value)}</b>)</div>
+          <div>• Total Bus Current: <em>Itotal = ${v.toFixed(1)}V / ${req.toFixed(2)}Ω</em> = <b class="text-emerald-400">${(iTotal >= 1 ? `${iTotal.toFixed(3)} A` : `${(iTotal * 1000).toFixed(1)} mA`)}</b></div>
+          <div>• Total Circuit Dissipation: <em>Ptotal = ${v.toFixed(1)}V × ${iTotal.toFixed(3)}A</em> = <b class="text-amber-400">${pTotal >= 1 ? `${pTotal.toFixed(2)} W` : `${(pTotal * 1000).toFixed(1)} mW`}</b></div>
+        `;
+      }
+    }
+
+    // App Initialization
+    window.addEventListener('DOMContentLoaded', () => {
+      seriesVis = new ResistorVisualizer3D("viewport-3d");
+      parallelVis = new ResistorVisualizer3D("viewport-3d-parallel");
+
+      initSeriesListeners();
+      updateSeriesViz();
+
+      initParallelListeners();
+      renderBranches();
+    });
+  </script>
+</body>
+</html>
