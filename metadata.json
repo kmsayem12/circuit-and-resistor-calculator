@@ -1,0 +1,9 @@
+{
+  "name": "Circuit & Resistor Calculator",
+  "description": "Electronics circuit and resistor calculator for series voltage drop and parallel equivalency with interactive 3D color-coded resistor visualizer.",
+  "version": "1.0.0",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

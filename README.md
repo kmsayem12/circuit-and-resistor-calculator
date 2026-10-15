@@ -1,6 +1,6 @@
 # ⚡ Circuit & Resistor Calculator
 
-A single-file, browser-based electronics calculator that helps you determine series voltage-dropping resistors and parallel resistor equivalents — with real-time 3D color-band visualization.
+A React and TypeScript electronics calculator that helps you determine series voltage-dropping resistors and parallel resistor equivalents — with real-time 3D color-band visualization rendered with Three.js.
 
 ## Features
 
@@ -23,9 +23,9 @@ A single-file, browser-based electronics calculator that helps you determine ser
 - Quick presets for common parallel networks.
 
 ### 3D Resistor Visualizer
-- Rendered with **Three.js** (r128) — interactive, draggable/orbitable 3D resistor model.
-- Color bands update in real time to reflect the nearest E24 value.
-- Color-band pill strip labels each band by name (e.g., *Brown*, *Black*, *Red*, *Gold*).
+- Interactive, draggable/orbitable 3D resistor model built with **Three.js** and **OrbitControls**.
+- Ceramic body, lead wires, bulbous end-caps, and 4 color bands updating in real time to reflect the calculated E24 value.
+- Color-band pill strip labels each band with realistic swatch colors and text names.
 
 ## Formulas
 
@@ -37,43 +37,29 @@ $$R = \frac{V_{in} - V_{target}}{I_{load}} \qquad P = (V_{in} - V_{target}) \tim
 
 $$\frac{1}{R_{eq}} = \frac{1}{R_1} + \frac{1}{R_2} + \cdots + \frac{1}{R_n} \qquad I_{total} = \frac{V_{bus}}{R_{eq}}$$
 
-## Getting Started
-
-No build step or server is required — the project is a single HTML file.
-
-1. Clone or download the repository:
-   ```bash
-   git clone https://github.com/your-username/circuit-and-resistor-calculator.git
-   ```
-2. Open `index.html` in any modern browser:
-   ```bash
-   open index.html        # macOS
-   start index.html       # Windows
-   xdg-open index.html    # Linux
-   ```
-
-> An active internet connection is needed on first load to fetch CDN assets (Tailwind CSS, Three.js).
-
 ## Tech Stack
 
-| Library | Version | Purpose |
-|---|---|---|
-| [Tailwind CSS](https://tailwindcss.com) | CDN (latest) | Utility-first styling |
-| [Three.js](https://threejs.org) | r128 | 3D resistor rendering |
-| Three.js OrbitControls | r128 | Mouse/touch orbit interaction |
+- **React 18** with TypeScript
+- **Vite** build tooling
+- **Tailwind CSS** styling
+- **Three.js** and **OrbitControls** for 3D graphics
 
-No frameworks, no bundler, no dependencies to install.
+## Getting Started
 
-## File Structure
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```
-circuit-and-resistor-calculator/
-└── index.html    # Entire app — markup, styles, and JavaScript
-```
+2. Start development server:
+   ```bash
+   npm run dev
+   ```
 
-## Browser Support
-
-Works in any modern browser that supports WebGL (Chrome, Firefox, Edge, Safari).
+3. Build for production:
+   ```bash
+   npm run build
+   ```
 
 ## License
 
